@@ -55,8 +55,38 @@ add_library(yog_api STATIC src/api/yog.c)
 target_include_directories(yog_api PUBLIC ${YOG_INCLUDE_DIR} ${YOG_SRC_DIR})
 target_link_libraries(yog_api PUBLIC yog_vm)
 
+# ---- shared library for language bindings (Python ctypes, Rust, Go, ...) ----
+# The same public ABI as yog_api, built as a DLL/shared object.  Sources are
+# compiled directly so the exported symbols are exactly those marked YOG_API.
+add_library(yog_shared SHARED
+  src/lexer/lexer.c
+  src/parser/ast.c
+  src/parser/parser.c
+  src/sema/symbol_table.c
+  src/sema/sema.c
+  src/ir/ir_build.c
+  src/ir/ir_dump.c
+  src/vm/unify.c
+  src/vm/engine.c
+  src/api/yog.c
+)
+target_include_directories(yog_shared PUBLIC ${YOG_INCLUDE_DIR} ${YOG_SRC_DIR})
+target_compile_definitions(yog_shared PRIVATE YOG_SHARED_EXPORTS)
+set_target_properties(yog_shared PROPERTIES
+  OUTPUT_NAME yog
+  POSITION_INDEPENDENT_CODE ON
+  C_VISIBILITY_PRESET hidden
+)
+if(WIN32)
+  # Keep the import library next to the DLL so Rust/Go linkers can find it.
+  set_target_properties(yog_shared PROPERTIES ARCHIVE_OUTPUT_DIRECTORY
+    ${CMAKE_BINARY_DIR})
+endif()
+
+
 # ---- tests ----
 enable_testing()
+find_package(Threads REQUIRED)
 
 function(yog_test name source library)
   add_executable(${name} ${source})
@@ -71,9 +101,36 @@ yog_test(test_ir     tests/ir/test_ir.c         yog_ir)
 yog_test(test_vm     tests/vm/test_vm.c         yog_api)
 yog_test(test_api    tests/api/test_api.c       yog_api)
 
+add_executable(test_security tests/security/test_security.c)
+target_link_libraries(test_security PRIVATE yog_api Threads::Threads)
+add_test(NAME test_security COMMAND test_security)
+
+yog_test(test_fuzz_smoke tests/fuzz/fuzz_smoke.c yog_api)
+
+# Coverage-guided fuzzing is opt-in: it needs Clang's -fsanitize=fuzzer.
+# Configure with -DYOG_FUZZ=ON -DYOG_SANITIZE=ON to get a runnable harness.
+option(YOG_FUZZ "Build the libFuzzer harness (Clang only)" OFF)
+if(YOG_FUZZ)
+  if(MSVC)
+    message(WARNING "YOG_FUZZ is ignored for MSVC; use Clang")
+  else()
+    add_executable(fuzz_compile tests/fuzz/fuzz_compile.c)
+    target_link_libraries(fuzz_compile PRIVATE yog_api)
+    target_compile_options(fuzz_compile PRIVATE -fsanitize=fuzzer)
+    target_link_options(fuzz_compile PRIVATE -fsanitize=fuzzer)
+  endif()
+endif()
+
 # ---- tools ----
 add_executable(lexdump tools/lexdump.c)
 target_link_libraries(lexdump PRIVATE yog_lexer)
 
 add_executable(yogc tools/yogc.c)
 target_link_libraries(yogc PRIVATE yog_api)
+
+# Benchmark harness (not part of ctest; driven by benchmarks/run_benchmarks.py).
+add_executable(bench_yog tests/bench/bench_yog.c)
+target_link_libraries(bench_yog PRIVATE yog_api)
+if(WIN32)
+  target_link_libraries(bench_yog PRIVATE psapi)
+endif()
