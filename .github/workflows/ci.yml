@@ -73,9 +73,6 @@ jobs:
         run: python yog/tests/conformance/run_conformance.py --yogc "$YOGC"
 
       - name: Property-based oracle
-        run: python yog/tests/property/property_conformance.py
-
-      - name: Property-based oracle
         shell: bash
         run: |
           python yog/tests/property/property_conformance.py --yogc "$YOGC"
