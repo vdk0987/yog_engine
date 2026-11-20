@@ -42,17 +42,23 @@ jobs:
           fi
 
       - name: Build
-        run: cmake --build yog/build --parallel
-
+        run: cmake --build yog/build --config Debug --parallel
+      
       - name: Run C tests
-        run: ctest --test-dir yog/build --output-on-failure
+        shell: bash
+        run: |
+        if [[ "$RUNNER_OS" == "Windows" ]]; then
+          ctest --test-dir yog/build -C Debug --output-on-failure
+        else
+          ctest --test-dir yog/build --output-on-failure
+        fi
 
       - name: Set compiler executable path
         shell: bash
         run: |
           if [[ "$RUNNER_OS" == "Windows" ]]; then
-            echo "YOGC=yog/build/yogc.exe" >> "$GITHUB_ENV"
-            echo "BENCH_YOG=yog/build/bench_yog.exe" >> "$GITHUB_ENV"
+            echo "YOGC=yog/build/Debug/yogc.exe" >> "$GITHUB_ENV"
+            echo "BENCH_YOG=yog/build/Debug/bench_yog.exe" >> "$GITHUB_ENV"
           else
             echo "YOGC=yog/build/yogc" >> "$GITHUB_ENV"
             echo "BENCH_YOG=yog/build/bench_yog" >> "$GITHUB_ENV"
