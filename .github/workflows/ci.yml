@@ -47,11 +47,11 @@ jobs:
       - name: Run C tests
         shell: bash
         run: |
-        if [[ "$RUNNER_OS" == "Windows" ]]; then
-          ctest --test-dir yog/build -C Debug --output-on-failure
-        else
-          ctest --test-dir yog/build --output-on-failure
-        fi
+          if [[ "$RUNNER_OS" == "Windows" ]]; then
+            ctest --test-dir yog/build -C Debug --output-on-failure
+          else
+            ctest --test-dir yog/build --output-on-failure
+          fi
 
       - name: Set compiler executable path
         shell: bash
