@@ -76,9 +76,9 @@ jobs:
         run: python yog/tests/property/property_conformance.py
 
       - name: Property-based oracle
-  shell: bash
-  run: |
-    python yog/tests/property/property_conformance.py --yogc "$YOGC"
+        shell: bash
+        run: |
+          python yog/tests/property/property_conformance.py --yogc "$YOGC"
 
       - name: AI guardrail examples
         shell: bash
